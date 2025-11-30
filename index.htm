@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>冬日祝福便签墙</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            overflow: hidden;
+            background-color: #ffffff; /* 初始白屏 */
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* 点击引导提示（居中显示） */
+        .click-guide {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #9f51b6;
+            font-size: 1.5rem;
+            font-weight: 500;
+            text-align: center;
+            z-index: 1001;
+            transition: opacity 0.5s ease;
+            cursor: pointer;
+        }
+        
+        .click-guide i {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); }
+        }
+        
+        /* 影月风格音频播放器 */
+        .music-player {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 20px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            box-shadow: 0 6px 20px rgba(159, 81, 182, 0.15);
+            backdrop-filter: blur(10px);
+            z-index: 999;
+            transition: all 0.3s ease;
+            opacity: 0; /* 初始隐藏 */
+            pointer-events: none;
+        }
+        
+        .music-player.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .music-player:hover {
+            box-shadow: 0 8px 24px rgba(159, 81, 182, 0.2);
+        }
+        
+        .music-icon {
+            color: #9f51b6;
+            font-size: 1.3rem;
+            transition: transform 0.2s ease;
+        }
+        
+        .music-icon:hover {
+            transform: scale(1.1);
+        }
+        
+        .music-progress {
+            flex: 1;
+            height: 4px;
+            background-color: #f0e7f3;
+            border-radius: 2px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: #9f51b6;
+            width: 0%;
+            transition: width 0.3s linear;
+        }
+        
+        .music-time {
+            color: #666;
+            font-size: 0.75rem;
+            min-width: 60px;
+            text-align: right;
+        }
+        
+        /* 便签样式 */
+        .note {
+            position: absolute;
+            padding: 1.25rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+            transform: rotate(var(--rotate, 0deg)) scale(0.8);
+            opacity: 0;
+            transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: 1;
+            max-width: 180px;
+            backdrop-filter: blur(4px);
+            background-color: var(--bg-color);
+        }
+        
+        .note.show {
+            opacity: 1;
+            transform: rotate(var(--rotate, 0deg)) scale(1);
+        }
+        
+        .note::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .note p {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+        
+        /* 马卡龙配色方案 */
+        .macaron-pink { --bg-color: rgba(255, 221, 233, 0.9); --text-color: #d64976; }
+        .macaron-blue { --bg-color: rgba(219, 242, 255, 0.9); --text-color: #4a90e2; }
+        .macaron-yellow { --bg-color: rgba(255, 246, 221, 0.9); --text-color: #e6b341; }
+        .macaron-green { --bg-color: rgba(221, 255, 233, 0.9); --text-color: #52c41a; }
+        .macaron-purple { --bg-color: rgba(240, 221, 255, 0.9); --text-color: #9f51b6; }
+        .macaron-orange { --bg-color: rgba(255, 235, 221, 0.9); --text-color: #fa8c16; }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .click-guide {
+                font-size: 1.2rem;
+            }
+            .click-guide i {
+                font-size: 2rem;
+            }
+            .note {
+                max-width: 140px;
+                padding: 1rem;
+            }
+            .note p {
+                font-size: 0.85rem;
+            }
+            .music-player {
+                width: 92%;
+                padding: 6px 12px;
+                gap: 8px;
+            }
+            .music-time {
+                min-width: 50px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 点击引导提示（初始显示） -->
+    <div class="click-guide" id="clickGuide">
+        <i class="fa fa-heart" aria-hidden="true"></i>
+        <div>点击屏幕，开启冬日祝福 ❤️</div>
+    </div>
+ 
+    <div id="noteContainer"></div>
+ 
+    <!-- 影月风格音频播放器（初始隐藏） -->
+    <div class="music-player" id="musicPlayer">
+        <div class="music-icon">
+            <i class="fa fa-music" aria-hidden="true"></i>
+        </div>
+        <div class="music-progress" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="music-time" id="musicTime">00:00 / 00:00</div>
+    </div>
+ 
+    <script>
+        // 核心元素获取
+        const clickGuide = document.getElementById('clickGuide');
+        const noteContainer = document.getElementById('noteContainer');
+        const musicPlayer = document.getElementById('musicPlayer');
+        const progressBar = document.getElementById('progressBar');
+        const musicTime = document.getElementById('musicTime');
+        const progressContainer = document.getElementById('progressContainer');
+        
+        // 音频初始化
+        const audioUrl = "https://sf5-hl-cdn-tos.douyinstatic.com/obj/ies-music/7499771397531503370.mp3";
+        const audio = new Audio(audioUrl);
+        let isActivated = false; // 标记是否已点击激活
+ 
+        
+        const wishes = [
+           // 
+            "冬至快乐，温暖常伴",
+            "天冷了，记得多穿衣服",
+            "每天都要保持开心呀",
+            "愿你冬日无忧，温暖向阳",
+            "冬至安康，诸事顺遂",
+            "注意保暖，照顾好自己",
+            "愿快乐与你不期而遇",
+            "冬日有暖，心中有爱",
+            "冬至大如年，团圆乐无边",
+            "寒来暑往，喜乐如常",
+            "添衣保暖，平安过冬",
+            "愿日子清透，世事温柔",
+            "冬至安康，岁岁无忧",
+            "天冷心不冷，温暖常相伴",
+            "每天都有新的美好",
+            "愿你三冬暖，春不寒",
+            "冬至快乐，幸福美满",
+            "注意防寒，保重身体",
+            "保持微笑，好运常在",
+            "冬日漫长，温暖不散",
+            "冬至安康，万事顺意",
+            "多喝热水，注意休息",
+            "愿生活明朗，万物可爱",
+            "寒冬至，暖相伴",
+            "祝你冬日安康，喜乐常随",
+          
+        ];
+ 
+        const colors = [
+            "macaron-pink",
+            "macaron-blue",
+            "macaron-yellow",
+            "macaron-green",
+            "macaron-purple",
+            "macaron-orange"
+        ];
+ 
+        const noteCount = wishes.length;
+        const maxDelay = 12000;
+        const cycleInterval = 30000;
+ 
+        // 创建便签元素
+        function createNote(wish, color, index) {
+            const note = document.createElement('div');
+            note.className = `note ${color}`;
+            const rotate = (Math.random() * 12 - 6).toFixed(1);
+            note.style.setProperty('--rotate', `${rotate}deg`);
+            note.innerHTML = `<p>${wish}</p>`;
+            
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const noteWidth = window.innerWidth < 768 ? 140 : 180;
+            const noteHeight = window.innerWidth < 768 ? 100 : 120;
+            
+            const maxX = screenWidth - noteWidth;
+            const maxY = screenHeight - noteHeight;
+            const x = Math.floor(Math.random() * maxX);
+            const y = Math.floor(Math.random() * maxY);
+            
+            note.style.left = `${x}px`;
+            note.style.top = `${y}px`;
+            
+            const delay = (index / noteCount) * maxDelay;
+            setTimeout(() => {
+                note.classList.add('show');
+            }, delay);
+            
+            return note;
+        }
+ 
+        // 初始化祝福便签
+        function initNotes() {
+            noteContainer.innerHTML = '';
+            const shuffledWishes = [...wishes].sort(() => Math.random() - 0.5);
+            
+            let batchSize = 30;
+            shuffledWishes.forEach((wish, index) => {
+                const color = colors[index % colors.length];
+                const note = createNote(wish, color, index);
+                noteContainer.appendChild(note);
+                
+                if ((index + 1) % batchSize === 0) {
+                    setTimeout(() => {}, 0);
+                }
+            });
+            
+            // 循环刷新便签
+            setInterval(initNotes, cycleInterval);
+        }
+ 
+        // 初始化音乐播放
+        function initAudio() {
+            // 立即播放音乐（用户已点击，符合浏览器策略）
+            audio.play().then(() => {
+                console.log('音乐播放成功');
+                musicPlayer.classList.add('active');
+            }).catch(err => {
+                console.log('音乐播放失败，重试', err);
+                // 失败后再次尝试播放
+                setTimeout(() => audio.play(), 300);
+                musicPlayer.classList.add('active');
+            });
+ 
+            // 音频元数据加载完成后更新总时长
+            audio.addEventListener('loadedmetadata', () => {
+                const totalTime = formatTime(audio.duration);
+                musicTime.textContent = `00:00 / ${totalTime}`;
+            });
+ 
+            // 实时更新播放进度
+            audio.addEventListener('timeupdate', () => {
+                const progress = (audio.currentTime / audio.duration) * 100;
+                progressBar.style.width = `${progress}%`;
+                const currentTime = formatTime(audio.currentTime);
+                const totalTime = formatTime(audio.duration);
+                musicTime.textContent = `${currentTime} / ${totalTime}`;
+            });
+ 
+            // 音乐循环播放
+            audio.addEventListener('ended', () => {
+                audio.currentTime = 0;
+                audio.play();
+            });
+ 
+            // 进度条点击跳转
+            progressContainer.addEventListener('click', (e) => {
+                const progressWidth = progressContainer.offsetWidth;
+                const clickPosition = e.offsetX;
+                const duration = audio.duration;
+                const newTime = (clickPosition / progressWidth) * duration;
+                audio.currentTime = newTime;
+            });
+        }
+ 
+        // 时间格式化函数
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '00:00';
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+ 
+        // 点击屏幕激活所有功能
+        function activateAll() {
+            if (isActivated) return;
+            isActivated = true;
+            
+            // 隐藏引导提示
+            clickGuide.style.opacity = '0';
+            setTimeout(() => {
+                clickGuide.style.display = 'none';
+            }, 500);
+            
+            // 同时初始化便签和音乐
+            initNotes();
+            initAudio();
+            
+            // 改变背景色（从纯白过渡到原有背景）
+            document.body.style.transition = 'background-color 1s ease';
+            document.body.style.backgroundColor = '#f9f7f5';
+        }
+ 
+        // 绑定点击和触摸事件（支持PC和移动端）
+        document.addEventListener('click', activateAll, { once: true });
+        document.addEventListener('touchstart', activateAll, { once: true });
+ 
+        // 窗口大小改变时重新布局便签
+        window.addEventListener('resize', () => {
+            if (!isActivated) return;
+            clearTimeout(window.resizeTimer);
+            window.resizeTimer = setTimeout(() => {
+                initNotes();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
